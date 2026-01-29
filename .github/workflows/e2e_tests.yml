@@ -87,12 +87,12 @@ jobs:
             exit 1
           fi
 
-      - name: Check if L2 stack needs to be started
+      - name: Deploy L2 package (Catalyst stack setup)
         working-directory: simple-taiko-node-nethermind
         run: |
           if [ -f "run-catalyst-stack.sh" ]; then
             echo "Found run-catalyst-stack.sh, L2 stack will be started"
-            ./run-catalyst-stack.sh
+            ./run-catalyst-stack.sh pacaya 3000
           else
             echo "No L2 startup script found, assuming deploy script handles everything"
           fi
@@ -134,7 +134,73 @@ jobs:
         working-directory: ./e2e_tests
         run: |
           cp .env.example .env
+          
+          # Read values from simple-taiko-node-nethermind/.env
+          SOURCE_ENV_FILE="../simple-taiko-node-nethermind/.env"
+          
+          # Function to get value from source .env file
+          get_env_value() {
+            local key="$1"
+            grep "^${key}=" "$SOURCE_ENV_FILE" | cut -d '=' -f2- | tr -d '"' | tr -d "'"
+          }
+          
+          # Update TAIKO_INBOX_ADDRESS from PACAYA_TAIKO
+          if PACAYA_TAIKO=$(get_env_value "PACAYA_TAIKO"); then
+            if [ -n "$PACAYA_TAIKO" ]; then
+              if grep -q "^TAIKO_INBOX_ADDRESS=" .env; then
+                sed -i "s|^TAIKO_INBOX_ADDRESS=.*|TAIKO_INBOX_ADDRESS=${PACAYA_TAIKO}|" .env
+              else
+                echo "TAIKO_INBOX_ADDRESS=${PACAYA_TAIKO}" >> .env
+              fi
+              echo "Updated TAIKO_INBOX_ADDRESS=${PACAYA_TAIKO}"
+            fi
+          fi
+          
+          # Update PRECONF_WHITELIST_ADDRESS from PACAYA_PRECONF_WHITELIST
+          if PACAYA_PRECONF_WHITELIST=$(get_env_value "PACAYA_PRECONF_WHITELIST"); then
+            if [ -n "$PACAYA_PRECONF_WHITELIST" ]; then
+              if grep -q "^PRECONF_WHITELIST_ADDRESS=" .env; then
+                sed -i "s|^PRECONF_WHITELIST_ADDRESS=.*|PRECONF_WHITELIST_ADDRESS=${PACAYA_PRECONF_WHITELIST}|" .env
+              else
+                echo "PRECONF_WHITELIST_ADDRESS=${PACAYA_PRECONF_WHITELIST}" >> .env
+              fi
+              echo "Updated PRECONF_WHITELIST_ADDRESS=${PACAYA_PRECONF_WHITELIST}"
+            fi
+          fi
+          
+          # Update FORCED_INCLUSION_STORE_ADDRESS from PACAYA_FORCED_INCLUSION_STORE
+          if PACAYA_FORCED_INCLUSION_STORE=$(get_env_value "PACAYA_FORCED_INCLUSION_STORE"); then
+            if [ -n "$PACAYA_FORCED_INCLUSION_STORE" ]; then
+              if grep -q "^FORCED_INCLUSION_STORE_ADDRESS=" .env; then
+                sed -i "s|^FORCED_INCLUSION_STORE_ADDRESS=.*|FORCED_INCLUSION_STORE_ADDRESS=${PACAYA_FORCED_INCLUSION_STORE}|" .env
+              else
+                echo "FORCED_INCLUSION_STORE_ADDRESS=${PACAYA_FORCED_INCLUSION_STORE}" >> .env
+              fi
+              echo "Updated FORCED_INCLUSION_STORE_ADDRESS=${PACAYA_FORCED_INCLUSION_STORE}"
+            fi
+          fi
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+  
+      - name: Install Python dependencies
+        working-directory: ./e2e_tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run E2E tests
+        working-directory: ./e2e_tests
+        run: |
+          pytest -v -s
+        env:
+          L1_RPC_URL: http://localhost:32003
+          BEACON_RPC_URL: http://localhost:33001
+          L2_RPC_URL_NODE1: http://localhost:8547
+          L2_RPC_URL_NODE2: http://localhost:8647
 
       - name: Cleanup Kurtosis enclave
         if: always()
