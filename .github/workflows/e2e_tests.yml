@@ -1,0 +1,176 @@
+name: E2E Tests
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout catalyst-e2e repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        working-directory: ./e2e_tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq
+
+      - name: Install Kurtosis
+        run: |
+          curl -fsSL https://docs.kurtosis.com/install.sh | bash
+          echo "$HOME/.kurtosis/bin" >> $GITHUB_PATH
+
+      - name: Verify Kurtosis installation
+        run: |
+          kurtosis version
+
+      - name: Clone simple-taiko-node-nethermind repository
+        run: |
+          git clone https://github.com/NethermindEth/simple-taiko-node-nethermind.git /tmp/simple-taiko-node-nethermind
+          cd /tmp/simple-taiko-node-nethermind
+          git checkout catalyst_pacaya_shasta
+
+      - name: Setup environment file
+        working-directory: /tmp/simple-taiko-node-nethermind
+        run: |
+          cp .env.example .env
+
+      - name: Deploy Ethereum package (L1 setup)
+        working-directory: /tmp/simple-taiko-node-nethermind
+        run: |
+          chmod +x deploy-etheruem-package.sh
+          ./deploy-etheruem-package.sh --environment local --mode silence
+        env:
+          SECONDS_PER_SLOT: 12
+
+      - name: Wait for L1 services to be ready
+        run: |
+          echo "Waiting for L1 services to be ready..."
+          timeout=300
+          elapsed=0
+          while [ $elapsed -lt $timeout ]; do
+            if curl -s http://localhost:32003 -X POST -H "Content-Type: application/json" \
+              --data '{"jsonrpc":"2.0","id":0,"method":"eth_blockNumber","params":[]}' > /dev/null 2>&1; then
+              echo "L1 Execution Layer is ready"
+              break
+            fi
+            echo "Waiting for L1 services... ($elapsed/$timeout seconds)"
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+          if [ $elapsed -ge $timeout ]; then
+            echo "Timeout waiting for L1 services"
+            exit 1
+          fi
+
+      - name: Wait for Beacon Node to be ready
+        run: |
+          echo "Waiting for Beacon Node to be ready..."
+          timeout=300
+          elapsed=0
+          while [ $elapsed -lt $timeout ]; do
+            if curl -s http://localhost:33001/lighthouse/syncing > /dev/null 2>&1; then
+              echo "Beacon Node is ready"
+              break
+            fi
+            echo "Waiting for Beacon Node... ($elapsed/$timeout seconds)"
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+          if [ $elapsed -ge $timeout ]; then
+            echo "Timeout waiting for Beacon Node"
+            exit 1
+          fi
+
+      - name: Check if L2 stack needs to be started
+        working-directory: /tmp/simple-taiko-node-nethermind
+        run: |
+          if [ -f "run-catalyst-stack.sh" ]; then
+            echo "Found run-catalyst-stack.sh, L2 stack will be started separately"
+          elif [ -f "docker-compose.yml" ]; then
+            echo "Found docker-compose.yml, checking if L2 services are defined"
+          else
+            echo "No L2 startup script found, assuming deploy script handles everything"
+          fi
+
+      - name: Wait for L2 nodes to be ready
+        run: |
+          echo "Waiting for L2 nodes to be ready..."
+          timeout=300
+          elapsed=0
+          while [ $elapsed -lt $timeout ]; do
+            node1_ready=false
+            node2_ready=false
+            
+            if curl -s http://localhost:8547 -X POST -H "Content-Type: application/json" \
+              --data '{"jsonrpc":"2.0","id":0,"method":"eth_blockNumber","params":[]}' > /dev/null 2>&1; then
+              node1_ready=true
+            fi
+            
+            if curl -s http://localhost:8647 -X POST -H "Content-Type: application/json" \
+              --data '{"jsonrpc":"2.0","id":0,"method":"eth_blockNumber","params":[]}' > /dev/null 2>&1; then
+              node2_ready=true
+            fi
+            
+            if [ "$node1_ready" = true ] && [ "$node2_ready" = true ]; then
+              echo "Both L2 nodes are ready"
+              break
+            fi
+            
+            echo "Waiting for L2 nodes... Node1: $node1_ready, Node2: $node2_ready ($elapsed/$timeout seconds)"
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+          
+          if [ $elapsed -ge $timeout ]; then
+            echo "Warning: Timeout waiting for L2 nodes, but continuing with tests"
+          fi
+
+      - name: Setup e2e test environment
+        working-directory: ./e2e_tests
+        run: |
+          cp .env.example .env
+
+      - name: Run E2E tests
+        working-directory: ./e2e_tests
+        run: |
+          pytest -v --tb=short
+        env:
+          L1_RPC_URL: http://localhost:32003
+          BEACON_RPC_URL: http://localhost:33001
+          L2_RPC_URL_NODE1: http://localhost:8547
+          L2_RPC_URL_NODE2: http://localhost:8647
+          TAIKO_INBOX_ADDRESS: 0xa4fD91B3b1032e1fd0d7623A54B1a399aaaF9ab5
+          PRECONF_WHITELIST_ADDRESS: 0xD9BFe39BA99503baA8cBA3DF08e3C9421889Fd44
+          FORCED_INCLUSION_STORE_ADDRESS: 0xc5092f6c1f30C8970dc835F0F754057f79b89CC6
+          PRECONF_MIN_TXS: 1
+          TEST_L2_PREFUNDED_PRIVATE_KEY: ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+          TEST_L2_PREFUNDED_PRIVATE_KEY_2: 59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+          L2_RPC_URL: http://localhost:8547
+          L1_PRIVATE_KEY: bcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31
+          L2_PRIVATE_KEY: 59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+          MAX_BLOCKS_PER_BATCH: 10
+          PRECONF_HEARTBEAT_MS: 2000
+          PROTOCOL: pacaya
+
+      - name: Cleanup Kurtosis enclave
+        if: always()
+        run: |
+          kurtosis enclave rm surge-devnet --force || true
