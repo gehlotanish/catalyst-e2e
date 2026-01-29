@@ -15,37 +15,23 @@ jobs:
       - name: Checkout catalyst-e2e repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install Python dependencies
-        working-directory: ./e2e_tests
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y curl jq
 
-      - name: Install Kurtosis
+      - name: Install Kurtosis CLI
         run: |
-          curl -fsSL https://docs.kurtosis.com/install.sh | bash
-          echo "$HOME/.kurtosis/bin" >> $GITHUB_PATH
-
-      - name: Verify Kurtosis installation
-        run: |
+          echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+          sudo apt-get update
+          sudo apt-get install -y kurtosis-cli
           kurtosis version
 
-      - name: Clone simple-taiko-node-nethermind repository
-        run: |
-          git clone https://github.com/NethermindEth/simple-taiko-node-nethermind.git /tmp/simple-taiko-node-nethermind
-          cd /tmp/simple-taiko-node-nethermind
-          git checkout catalyst_pacaya_shasta
+      - uses: actions/checkout@v6
+        with:
+          repository: NethermindEth/simple-taiko-node-nethermind
+          path: /tmp/simple-taiko-node-nethermind
+          ref: catalyst_pacaya_shasta
 
       - name: Setup environment file
         working-directory: /tmp/simple-taiko-node-nethermind
