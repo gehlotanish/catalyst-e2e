@@ -91,9 +91,8 @@ jobs:
         working-directory: simple-taiko-node-nethermind
         run: |
           if [ -f "run-catalyst-stack.sh" ]; then
-            echo "Found run-catalyst-stack.sh, L2 stack will be started separately"
-          elif [ -f "docker-compose.yml" ]; then
-            echo "Found docker-compose.yml, checking if L2 services are defined"
+            echo "Found run-catalyst-stack.sh, L2 stack will be started"
+            ./run-catalyst-stack.sh
           else
             echo "No L2 startup script found, assuming deploy script handles everything"
           fi
