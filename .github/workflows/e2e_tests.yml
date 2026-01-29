@@ -27,11 +27,13 @@ jobs:
           sudo apt-get install -y kurtosis-cli
           kurtosis version
 
-      - uses: actions/checkout@v6
+      - name: Clone simple-taiko-node-nethermind repository
+        uses: actions/checkout@v6
         with:
           repository: NethermindEth/simple-taiko-node-nethermind
           path: simple-taiko-node-nethermind
           ref: catalyst_pacaya_shasta
+          submodules: true
 
       - name: Setup environment file
         working-directory: simple-taiko-node-nethermind
