@@ -1,0 +1,10 @@
+target
+docs
+.github
+deny.toml
+*.md
+.git
+.gitignore
+.env
+.env.*
+.vscode

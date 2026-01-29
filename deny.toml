@@ -1,0 +1,82 @@
+# https://embarkstudios.github.io/cargo-deny/index.html
+
+[graph]
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },
+    { triple = "aarch64-unknown-linux-gnu" },
+]
+all-features = true
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked = "deny"
+ignore = [
+    "RUSTSEC-2024-0436", # paste - no longer maintained
+    "RUSTSEC-2023-0071", # https://github.com/NethermindEth/Catalyst/issues/735
+    "RUSTSEC-2026-0002", # lru 0.13.0 - transitive dependency from alloy-provider v1.3.0, waiting for alloy update to fix
+    "RUSTSEC-2025-0141", # unmaintained advisory detected, used by alethia-reth
+]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "0BSD",
+    "BSD-3-Clause",
+    "BSD-2-Clause",
+    "CC-BY-1.0",
+    "CC-BY-2.0",
+    "CC-BY-3.0",
+    "CC-BY-4.0",
+    "CC0-1.0",
+    "ISC",
+    "OpenSSL",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+]
+confidence-threshold = 0.8
+unused-allowed-license = "allow"
+
+[licenses.private]
+ignore = false
+registries = []
+
+[[licenses.exceptions]]
+allow = ["MPL-2.0", "CDLA-Permissive-2.0"]
+name = "webpki-roots"
+version = "*"
+
+[[licenses.exceptions]]
+allow = ["MPL-2.0"]
+name = "option-ext"
+version = "*"
+
+[bans]
+allow-wildcard-paths = true
+multiple-versions = "allow"
+wildcards = "deny"
+highlight = "all"
+
+[bans.workspace-dependencies]
+duplicates = 'deny'
+unused = 'deny'
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = [
+    "https://github.com/taikoxyz/taiko-mono.git",
+    "https://github.com/paradigmxyz/reth.git",
+    "https://github.com/taikoxyz/alethia-reth",
+]
+
+[sources.allow-org]
+github = []
+gitlab = []
+bitbucket = []

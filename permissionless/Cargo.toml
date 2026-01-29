@@ -1,0 +1,22 @@
+[package]
+name = "permissionless"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+alloy = { workspace = true }
+anyhow = { workspace = true }
+blst = { workspace = true }
+common = { workspace = true }
+pacaya = { workspace = true }
+rustls = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tracing = { workspace = true }
+urc = { workspace = true }
+
+[lints]
+workspace = true
