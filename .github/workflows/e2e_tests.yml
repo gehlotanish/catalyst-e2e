@@ -195,12 +195,8 @@ jobs:
       - name: Run E2E tests
         working-directory: ./e2e_tests
         run: |
+          source .env
           pytest -v -s
-        env:
-          L1_RPC_URL: http://localhost:32003
-          BEACON_RPC_URL: http://localhost:33001
-          L2_RPC_URL_NODE1: http://localhost:8547
-          L2_RPC_URL_NODE2: http://localhost:8647
 
       - name: Cleanup Kurtosis enclave
         if: always()
