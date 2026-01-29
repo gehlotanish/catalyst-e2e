@@ -195,6 +195,7 @@ jobs:
       - name: Run E2E tests
         working-directory: ./e2e_tests
         run: |
+          sleep 90
           source .env
           pytest -v -s
 
