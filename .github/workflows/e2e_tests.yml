@@ -180,6 +180,11 @@ jobs:
             fi
           fi
 
+      - name: docker ps
+        working-directory: ./e2e_tests
+        run: |
+          docker ps
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
