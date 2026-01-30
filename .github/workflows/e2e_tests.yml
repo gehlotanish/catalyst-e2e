@@ -243,6 +243,10 @@ jobs:
         working-directory: simple-taiko-node-nethermind
         run: |
           if [ -f "run-catalyst-stack.sh" ]; then
+            echo "Deploying Pacaya contract"
+            ./run-catalyst-stack.sh pacaya 120
+            echo "Deploying Pacaya contract completed"
+            echo "--------------------------------"
             echo "Deploying Shasta contract"
             ./run-catalyst-stack.sh shasta 120
             echo "Deploying Shasta contract completed"
