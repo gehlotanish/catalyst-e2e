@@ -87,7 +87,7 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy L2 package (Catalyst stack setup)
+      - name: Deploy L2 Packaya Contract (Catalyst stack setup)
         working-directory: simple-taiko-node-nethermind
         run: |
           if [ -f "run-catalyst-stack.sh" ]; then
@@ -97,6 +97,16 @@ jobs:
             echo "No L2 startup script found, assuming deploy script handles everything"
           fi
 
+      - name: Deploy L2 Shasta Contract (Catalyst stack setup)
+        working-directory: simple-taiko-node-nethermind
+        run: |
+          if [ -f "run-catalyst-stack.sh" ]; then
+            echo "Found run-catalyst-stack.sh, L2 stack will be started"
+            ./run-catalyst-stack.sh shasta 3000
+          else
+            echo "No L2 startup script found, assuming deploy script handles everything"
+          fi
+          
       - name: Wait for L2 nodes to be ready
         run: |
           echo "Waiting for L2 nodes to be ready..."
@@ -197,10 +207,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run E2E tests
+      - name: Run Pacaya E2E tests
         working-directory: ./e2e_tests
         run: |
-          sleep 90
           source .env
           pytest -v -s
 
