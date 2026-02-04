@@ -10,7 +10,7 @@ jobs:
   e2e-tests-pacaya:
     name: E2E Tests (Pacaya)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - name: Checkout catalyst-e2e repository
         uses: actions/checkout@v6
@@ -19,14 +19,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y curl jq
-
+          
       - name: Install Kurtosis CLI
         run: |
           echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
           sudo apt-get update
           sudo apt-get install -y kurtosis-cli
           kurtosis version
-
+  
       - name: Clone simple-taiko-node-nethermind repository
         uses: actions/checkout@v6
         with:
@@ -34,6 +34,33 @@ jobs:
           path: simple-taiko-node-nethermind
           ref: catalyst_pacaya_shasta
           submodules: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+  
+      - name: Docker Build Catalyst Node
+        run: |
+          image_name="nethermind/catalyst-node"
+          image_tag="${GITHUB_SHA:0:8}"
+          full_image="${image_name}:${image_tag}"
+          
+          echo "Building Docker image: ${full_image}"
+          
+          docker buildx build . \
+            --platform linux/amd64 \
+            -f Dockerfile \
+            -t "${full_image}"
+          
+          echo "IMAGE_TAG=${full_image}" >> $GITHUB_ENV
+          
+          echo "Verifying image exists locally:"
+          docker images | grep "${image_name}" | grep "${image_tag}" || (echo "Error: Image not found locally" && exit 1)
+
+      - name: Replace Catalyst Node Image simple taiko node nethermind
+        working-directory: simple-taiko-node-nethermind
+        run: |
+          CATALYST_IMAGE="nethermind/catalyst-node:latest"
+          sed -i "s|${CATALYST_IMAGE}|${IMAGE_TAG}|g" .env.example
 
       - name: Deploy Ethereum package (L1 setup)
         working-directory: simple-taiko-node-nethermind
@@ -87,13 +114,8 @@ jobs:
         working-directory: simple-taiko-node-nethermind
         run: |
           if [ -f "run-catalyst-stack.sh" ]; then
-            echo "Deploying Pacaya contract"
-            ./run-catalyst-stack.sh pacaya 120
-            echo "Deploying Pacaya contract completed"
-            echo "--------------------------------"
-            echo "Deploying Shasta contract"
-            ./run-catalyst-stack.sh shasta 120
-            echo "Deploying Shasta contract completed"
+            echo "Deploying L2 contract"
+            ./run-catalyst-stack.sh 9999999999
           else
             echo "No L2 startup script found, assuming deploy script handles everything"
           fi
@@ -148,11 +170,23 @@ jobs:
 
       - name: Run Pacaya E2E tests
         working-directory: ./e2e_tests
+        env:
+          PYTHONUNBUFFERED: 1
         run: |
           cp .env.example .env
           source .env
-          pytest -v -s
+          pytest -v --capture tee-sys -r a --tb=long 2>&1 | tee pytest-pacaya.log; exit ${PIPESTATUS[0]}
           rm .env
+
+      - name: Upload Pacaya pytest log file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pacaya-pytest-logs
+          path: |
+            e2e_tests/pytest-pacaya.log
+          retention-days: 15
+          if-no-files-found: warn
 
       - name: Cleanup Kurtosis enclave (Pacaya)
         if: always()
@@ -166,7 +200,7 @@ jobs:
   e2e-tests-shasta:
     name: E2E Tests (Shasta)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - name: Checkout catalyst-e2e repository
         uses: actions/checkout@v6
@@ -190,6 +224,33 @@ jobs:
           path: simple-taiko-node-nethermind
           ref: catalyst_pacaya_shasta
           submodules: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+  
+      - name: Docker Build Catalyst Node
+        run: |
+          image_name="nethermind/catalyst-node"
+          image_tag="${GITHUB_SHA:0:8}"
+          full_image="${image_name}:${image_tag}"
+          
+          echo "Building Docker image: ${full_image}"
+          
+          docker buildx build . \
+            --platform linux/amd64 \
+            -f Dockerfile \
+            -t "${full_image}"
+          
+          echo "IMAGE_TAG=${full_image}" >> $GITHUB_ENV
+          
+          echo "Verifying image exists locally:"
+          docker images | grep "${image_name}" | grep "${image_tag}" || (echo "Error: Image not found locally" && exit 1)
+
+      - name: Replace Catalyst Node Image simple taiko node nethermind
+        working-directory: simple-taiko-node-nethermind
+        run: |
+          CATALYST_IMAGE="nethermind/catalyst-node:latest"
+          sed -i "s|${CATALYST_IMAGE}|${IMAGE_TAG}|g" .env.example
 
       - name: Deploy Ethereum package (L1 setup)
         working-directory: simple-taiko-node-nethermind
@@ -243,13 +304,8 @@ jobs:
         working-directory: simple-taiko-node-nethermind
         run: |
           if [ -f "run-catalyst-stack.sh" ]; then
-            echo "Deploying Pacaya contract"
-            ./run-catalyst-stack.sh pacaya 120
-            echo "Deploying Pacaya contract completed"
-            echo "--------------------------------"
-            echo "Deploying Shasta contract"
-            ./run-catalyst-stack.sh shasta 120
-            echo "Deploying Shasta contract completed"
+            echo "Deploying L2 contract"
+            ./run-catalyst-stack.sh 60
           else
             echo "No L2 startup script found, assuming deploy script handles everything"
           fi
@@ -292,11 +348,23 @@ jobs:
 
       - name: Run Shasta E2E tests
         working-directory: ./e2e_tests
+        env:
+          PYTHONUNBUFFERED: 1
         run: |
           cp .env.example.shasta .env
           source .env
-          pytest -v -s
+          pytest -v --capture tee-sys -r a --tb=long 2>&1 | tee pytest-shasta.log; exit ${PIPESTATUS[0]}
           rm .env
+
+      - name: Upload Shasta pytest log file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shasta-pytest-logs
+          path: |
+            e2e_tests/pytest-shasta.log
+          retention-days: 15
+          if-no-files-found: warn
 
       - name: Cleanup Kurtosis enclave (Shasta)
         if: always()
