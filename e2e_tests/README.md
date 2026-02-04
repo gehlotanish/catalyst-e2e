@@ -1,4 +1,4 @@
-# End to end preconfirmation tests
+# End to end preconfirmation test
 
 This is a collection of end to end tests for the preconfirmation service.
 
