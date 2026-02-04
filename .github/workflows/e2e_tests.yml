@@ -83,7 +83,16 @@ jobs:
           sed -i "s|${CATALYST_IMAGE}|${IMAGE_TAG}|g" .env.example
           yq eval '.services.catalyst-node-1.pull_policy = "never"' -i docker-compose-nethermind.yml
           yq eval '.services.catalyst-node-2.pull_policy = "never"' -i docker-compose-nethermind.yml
-
+          echo "======================="
+          echo ""
+          cat docker-compose-nethermind.yml
+          echo ""
+          echo "-----------------------"
+          docker images
+          echo ""
+          echo "-----------------------"
+          cat .env.example
+          
       - name: Deploy Ethereum package (L1 setup)
         working-directory: simple-taiko-node-nethermind
         run: |
