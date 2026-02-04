@@ -36,6 +36,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y curl jq
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
           
       - name: Install Kurtosis CLI
         run: |
@@ -73,12 +75,13 @@ jobs:
           
           echo "Verifying image exists locally:"
           docker images | grep "${image_name}" | grep "${image_tag}" || (echo "Error: Image not found locally" && exit 1)
-
+          
       - name: Replace Catalyst Node Image simple taiko node nethermind
         working-directory: simple-taiko-node-nethermind
         run: |
           CATALYST_IMAGE="nethermind/catalyst-node:latest"
           sed -i "s|${CATALYST_IMAGE}|${IMAGE_TAG}|g" .env.example
+          yq eval '.services.catalyst-node-1.pull_policy = "never"' -i docker-compose-nethermind.yml
 
       - name: Deploy Ethereum package (L1 setup)
         working-directory: simple-taiko-node-nethermind
@@ -233,6 +236,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y curl jq
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
 
       - name: Install Kurtosis CLI
         run: |
@@ -276,6 +281,7 @@ jobs:
         run: |
           CATALYST_IMAGE="nethermind/catalyst-node:latest"
           sed -i "s|${CATALYST_IMAGE}|${IMAGE_TAG}|g" .env.example
+          yq eval '.services.catalyst-node-2.pull_policy = "never"' -i docker-compose-nethermind.yml
 
       - name: Deploy Ethereum package (L1 setup)
         working-directory: simple-taiko-node-nethermind
