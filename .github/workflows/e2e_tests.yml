@@ -1,20 +1,13 @@
 name: "Catalyst e2e Stack - Pytest with Kurtosis"
 
 on:
-  pull_request:
-    types: [ready_for_review, labeled]
+  push:
     branches:
       - master
   workflow_dispatch:
-    inputs:
-      run_e2e:
-        description: 'Run E2E tests'
-        required: true
-        default: true
-        type: boolean
 
 concurrency:
-  group: catalyst-e2e-pytest-${{ github.event.pull_request.number || github.run_id }}
+  group: catalyst-e2e-pytest-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -24,10 +17,7 @@ jobs:
     timeout-minutes: 180
     if: |
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && 
-       github.event.pull_request.base.ref == 'master' &&
-       (github.event.action == 'labeled' && (github.event.label.name == 'run-e2e-tests' || contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')) ||
-        (github.event.action == 'ready_for_review' && github.event.pull_request.draft == false)))
+      (github.event_name == 'push' && github.ref == 'refs/heads/master')
     steps:
       - name: Checkout catalyst-e2e repository
         uses: actions/checkout@v6
@@ -83,16 +73,7 @@ jobs:
           sed -i "s|${CATALYST_IMAGE}|${IMAGE_TAG}|g" .env.example
           yq eval '.services.catalyst-node-1.pull_policy = "never"' -i docker-compose.yml
           yq eval '.services.catalyst-node-2.pull_policy = "never"' -i docker-compose.yml
-          echo "======================="
-          echo ""
-          cat docker-compose-nethermind.yml
-          echo ""
-          echo "-----------------------"
-          docker images
-          echo ""
-          echo "-----------------------"
-          cat .env.example
-          
+
       - name: Deploy Ethereum package (L1 setup)
         working-directory: simple-taiko-node-nethermind
         run: |
@@ -234,10 +215,7 @@ jobs:
     timeout-minutes: 180
     if: |
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && 
-       github.event.pull_request.base.ref == 'master' &&
-       (github.event.action == 'labeled' && (github.event.label.name == 'run-e2e-tests' || contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')) ||
-        (github.event.action == 'ready_for_review' && github.event.pull_request.draft == false)))
+      (github.event_name == 'push' && github.ref == 'refs/heads/master')
     steps:
       - name: Checkout catalyst-e2e repository
         uses: actions/checkout@v6
@@ -293,16 +271,7 @@ jobs:
           sed -i "s|${CATALYST_IMAGE}|${IMAGE_TAG}|g" .env.example
           yq eval '.services.catalyst-node-1.pull_policy = "never"' -i docker-compose.yml
           yq eval '.services.catalyst-node-2.pull_policy = "never"' -i docker-compose.yml
-          echo "======================="
-          echo ""
-          cat docker-compose-nethermind.yml
-          echo ""
-          echo "-----------------------"
-          docker images
-          echo ""
-          echo "-----------------------"
-          cat .env.example
-
+          
       - name: Deploy Ethereum package (L1 setup)
         working-directory: simple-taiko-node-nethermind
         run: |
