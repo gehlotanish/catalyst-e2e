@@ -11,7 +11,7 @@ Engineered with ❤️ at [Nethermind](https://www.nethermind.io/)
 
 ## Features
 
-- ✅ **Validator registration** to the preconfirmation registry at initial setup
+- ✅ **Validator registration** to the preconfirmation registry at initial setups
 - ✅ **Lookahead** submissions and disputes.
 - ✅ **Dispute** **against preconfirmations** made by other validators.
 - ✅ Execution of the **main preconfirmation duties**, which include:
